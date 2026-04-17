@@ -51,38 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Try to proxy to FastAPI if configured
-    const fastApiUrl = process.env.FASTAPI_URL;
-
-    if (fastApiUrl) {
-      try {
-        const proxyFormData = new FormData();
-        proxyFormData.append("image", image);
-
-        const backendRes = await fetch(`${fastApiUrl}/generate-owl`, {
-          method: "POST",
-          body: proxyFormData,
-          signal: AbortSignal.timeout(30000), // 30s timeout
-        });
-
-        if (backendRes.ok) {
-          const data = await backendRes.json();
-          return Response.json(data);
-        }
-
-        console.error(
-          "FastAPI error:",
-          backendRes.status,
-          await backendRes.text()
-        );
-        // Fall through to dummy response
-      } catch (err) {
-        console.error("FastAPI connection failed:", err);
-        // Fall through to dummy response
-      }
-    }
-
-    // ── Dummy Response (used when FastAPI is unavailable) ──────────
+    // ── Dummy Response (Frontend-only mode) ──────────
     // Simulate processing delay
     await new Promise((resolve) => setTimeout(resolve, 2500));
 
