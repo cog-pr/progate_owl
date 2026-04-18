@@ -7,6 +7,7 @@ import TopScreen from "./components/TopScreen";
 import CaptureScreen from "./components/CaptureScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultScreen from "./components/ResultScreen";
+import LoginModal from "./components/LoginModal";
 
 type Screen = "top" | "capture" | "loading" | "result";
 
@@ -77,6 +78,8 @@ export default function Home() {
   const [history, setHistory] = useState<OwlRecord[]>([]);
   const [currentResult, setCurrentResult] = useState<OwlRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
 
   useEffect(() => {
     setHasGeneratedToday(hasGeneratedTodayCheck());
@@ -106,6 +109,23 @@ export default function Home() {
   const handleGoTop = useCallback(() => {
     setScreen("top");
     setError(null);
+  }, []);
+
+  const handleOpenLogin = useCallback(() => {
+    setShowLoginModal(true);
+  }, []);
+
+  const handleCloseLogin = useCallback(() => {
+    setShowLoginModal(false);
+  }, []);
+
+  const handleLogin = useCallback((email: string) => {
+    setLoggedInUser(email);
+    setShowLoginModal(false);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setLoggedInUser(null);
   }, []);
 
   const handleSubmitPhoto = useCallback(async (file: File) => {
@@ -165,6 +185,9 @@ export default function Home() {
             onShowHistory={handleShowHistory}
             onViewTodayOwl={handleViewTodayOwl}
             historyCount={history.length}
+            onLogin={handleOpenLogin}
+            loggedInUser={loggedInUser}
+            onLogout={handleLogout}
           />
         )}
 
@@ -210,6 +233,14 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* ログインモーダル */}
+      {showLoginModal && (
+        <LoginModal
+          onClose={handleCloseLogin}
+          onLogin={handleLogin}
+        />
+      )}
     </div>
   );
 }

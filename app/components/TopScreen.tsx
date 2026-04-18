@@ -6,6 +6,9 @@ interface TopScreenProps {
   onShowHistory: () => void;
   onViewTodayOwl: () => void;
   historyCount: number;
+  onLogin: () => void;
+  loggedInUser: string | null;
+  onLogout: () => void;
 }
 
 export default function TopScreen({
@@ -14,9 +17,36 @@ export default function TopScreen({
   onShowHistory,
   onViewTodayOwl,
   historyCount,
+  onLogin,
+  loggedInUser,
+  onLogout,
 }: TopScreenProps) {
   return (
     <div className="animate-screen-enter flex flex-1 flex-col items-center justify-center px-6 py-6 text-center">
+      {/* ログインボタン（右上） */}
+      <div className="login-top-bar">
+        {loggedInUser ? (
+          <div className="login-user-badge">
+            <span className="login-user-avatar">🦉</span>
+            <span className="login-user-name">{loggedInUser}</span>
+            <button
+              onClick={onLogout}
+              className="login-logout-btn"
+              id="logout-btn"
+            >
+              ログアウト
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onLogin}
+            className="login-header-btn"
+            id="login-btn"
+          >
+            ログイン
+          </button>
+        )}
+      </div>
       {/* Owl Icon */}
       <div className="animate-float-slow mb-4">
         <svg
