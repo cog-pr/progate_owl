@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import StarBackground from "./components/StarBackground";
 import TopScreen from "./components/TopScreen";
 import CaptureScreen from "./components/CaptureScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultScreen from "./components/ResultScreen";
-import HistoryScreen from "./components/HistoryScreen";
 
-type Screen = "top" | "capture" | "loading" | "result" | "history";
+type Screen = "top" | "capture" | "loading" | "result";
 
 interface OwlRecord {
   date: string;
@@ -23,7 +23,6 @@ interface OwlResult {
   message: string;
 }
 
-// ── Helpers ──────────────────────────────────────────
 function getTodayStr(): string {
   const now = new Date();
   const y = now.getFullYear();
@@ -70,49 +69,45 @@ function hasGeneratedTodayCheck(): boolean {
   }
 }
 
-// ── Main Component ───────────────────────────────────
 export default function Home() {
+  const router = useRouter();
+
   const [screen, setScreen] = useState<Screen>("top");
   const [hasGeneratedToday, setHasGeneratedToday] = useState(false);
   const [history, setHistory] = useState<OwlRecord[]>([]);
   const [currentResult, setCurrentResult] = useState<OwlRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize from localStorage
   useEffect(() => {
     setHasGeneratedToday(hasGeneratedTodayCheck());
     setHistory(loadHistory());
+
     const todayResult = loadTodayResult();
     if (todayResult) {
       setCurrentResult(todayResult);
     }
   }, []);
 
-  // Navigate to capture
   const handleStartCapture = useCallback(() => {
     setScreen("capture");
     setError(null);
   }, []);
 
-  // View today's owl (already generated)
   const handleViewTodayOwl = useCallback(() => {
     if (currentResult) {
       setScreen("result");
     }
   }, [currentResult]);
 
-  // Navigate to history
   const handleShowHistory = useCallback(() => {
-    setScreen("history");
-  }, []);
+    router.push("/forest");
+  }, [router]);
 
-  // Navigate to top
   const handleGoTop = useCallback(() => {
     setScreen("top");
     setError(null);
   }, []);
 
-  // Submit photo and generate owl
   const handleSubmitPhoto = useCallback(async (file: File) => {
     setScreen("loading");
     setError(null);
@@ -140,12 +135,11 @@ export default function Home() {
         message: data.message,
       };
 
-      // Save to localStorage
       saveTodayResult(record);
+
       const updatedHistory = [...loadHistory(), record];
       saveHistory(updatedHistory);
 
-      // Update state
       setCurrentResult(record);
       setHistory(updatedHistory);
       setHasGeneratedToday(true);
@@ -161,6 +155,8 @@ export default function Home() {
 
   return (
     <div className="relative flex flex-col flex-1 min-h-dvh">
+      <StarBackground />
+
       <main className="relative z-10 flex flex-col flex-1 w-full max-w-lg mx-auto">
         {screen === "top" && (
           <TopScreen
@@ -213,13 +209,7 @@ export default function Home() {
             onShowHistory={handleShowHistory}
           />
         )}
-
-        {screen === "history" && (
-          <HistoryScreen history={history} onGoTop={handleGoTop} />
-        )}
       </main>
-
-      <StarBackground />
     </div>
   );
 }
