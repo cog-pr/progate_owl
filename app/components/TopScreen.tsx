@@ -6,6 +6,9 @@ interface TopScreenProps {
   onShowHistory: () => void;
   onViewTodayOwl: () => void;
   historyCount: number;
+  onLogin: () => void;
+  loggedInUser: string | null;
+  onLogout: () => void;
 }
 
 export default function TopScreen({
@@ -14,6 +17,9 @@ export default function TopScreen({
   onShowHistory,
   onViewTodayOwl,
   historyCount,
+  onLogin,
+  loggedInUser,
+  onLogout,
 }: TopScreenProps) {
   return (
     <div className="animate-screen-enter flex flex-1 flex-col items-center justify-center px-6 py-6 text-center">

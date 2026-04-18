@@ -7,6 +7,7 @@ import TopScreen from "./components/TopScreen";
 import CaptureScreen from "./components/CaptureScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultScreen from "./components/ResultScreen";
+import LoginModal from "./components/LoginModal";
 
 type Screen = "top" | "capture" | "loading" | "result";
 
@@ -77,6 +78,8 @@ export default function Home() {
   const [history, setHistory] = useState<OwlRecord[]>([]);
   const [currentResult, setCurrentResult] = useState<OwlRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
 
   useEffect(() => {
     setHasGeneratedToday(hasGeneratedTodayCheck());
@@ -106,6 +109,23 @@ export default function Home() {
   const handleGoTop = useCallback(() => {
     setScreen("top");
     setError(null);
+  }, []);
+
+  const handleOpenLogin = useCallback(() => {
+    setShowLoginModal(true);
+  }, []);
+
+  const handleCloseLogin = useCallback(() => {
+    setShowLoginModal(false);
+  }, []);
+
+  const handleLogin = useCallback((email: string) => {
+    setLoggedInUser(email);
+    setShowLoginModal(false);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    setLoggedInUser(null);
   }, []);
 
   const handleSubmitPhoto = useCallback(async (file: File) => {
@@ -157,6 +177,31 @@ export default function Home() {
     <div className="relative flex flex-col flex-1 min-h-dvh">
       <StarBackground />
 
+      {/* ログインバー（画面右上固定） */}
+      <div className="login-top-bar">
+        {loggedInUser ? (
+          <div className="login-user-badge">
+            <span className="login-user-avatar">🦉</span>
+            <span className="login-user-name">{loggedInUser}</span>
+            <button
+              onClick={handleLogout}
+              className="login-logout-btn"
+              id="logout-btn"
+            >
+              ログアウト
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleOpenLogin}
+            className="login-header-btn"
+            id="login-btn"
+          >
+            ログイン
+          </button>
+        )}
+      </div>
+
       <main className="relative z-10 flex flex-col flex-1 w-full max-w-lg mx-auto">
         {screen === "top" && (
           <TopScreen
@@ -165,6 +210,9 @@ export default function Home() {
             onShowHistory={handleShowHistory}
             onViewTodayOwl={handleViewTodayOwl}
             historyCount={history.length}
+            onLogin={handleOpenLogin}
+            loggedInUser={loggedInUser}
+            onLogout={handleLogout}
           />
         )}
 
@@ -210,6 +258,14 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* ログインモーダル */}
+      {showLoginModal && (
+        <LoginModal
+          onClose={handleCloseLogin}
+          onLogin={handleLogin}
+        />
+      )}
     </div>
   );
 }

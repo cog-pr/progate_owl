@@ -17,11 +17,11 @@ export default function StarBackground() {
   useEffect(() => {
     // Generate stars only on client to avoid hydration mismatch
     setStars(
-      Array.from({ length: 60 }, () => ({
+      Array.from({ length: 80 }, () => ({
         x: Math.random() * 100,
         y: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.5 + 0.2,
+        size: Math.random() * 4 + 2,
+        opacity: Math.random() * 0.6 + 0.4,
         twinkleSpeed: Math.random() * 3 + 2,
         twinkleDelay: Math.random() * 5,
       }))
