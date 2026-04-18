@@ -177,6 +177,31 @@ export default function Home() {
     <div className="relative flex flex-col flex-1 min-h-dvh">
       <StarBackground />
 
+      {/* ログインバー（画面右上固定） */}
+      <div className="login-top-bar">
+        {loggedInUser ? (
+          <div className="login-user-badge">
+            <span className="login-user-avatar">🦉</span>
+            <span className="login-user-name">{loggedInUser}</span>
+            <button
+              onClick={handleLogout}
+              className="login-logout-btn"
+              id="logout-btn"
+            >
+              ログアウト
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleOpenLogin}
+            className="login-header-btn"
+            id="login-btn"
+          >
+            ログイン
+          </button>
+        )}
+      </div>
+
       <main className="relative z-10 flex flex-col flex-1 w-full max-w-lg mx-auto">
         {screen === "top" && (
           <TopScreen
