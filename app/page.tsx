@@ -161,8 +161,6 @@ export default function Home() {
 
   return (
     <div className="relative flex flex-col flex-1 min-h-dvh">
-      <StarBackground />
-
       <main className="relative z-10 flex flex-col flex-1 w-full max-w-lg mx-auto">
         {screen === "top" && (
           <TopScreen
@@ -220,6 +218,8 @@ export default function Home() {
           <HistoryScreen history={history} onGoTop={handleGoTop} />
         )}
       </main>
+
+      <StarBackground />
     </div>
   );
 }

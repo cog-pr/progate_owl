@@ -16,16 +16,21 @@ export default function StarBackground() {
 
   useEffect(() => {
     // Generate stars only on client to avoid hydration mismatch
-    setStars(
-      Array.from({ length: 60 }, () => ({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 0.5,
-        opacity: Math.random() * 0.5 + 0.2,
-        twinkleSpeed: Math.random() * 3 + 2,
-        twinkleDelay: Math.random() * 5,
-      }))
-    );
+    // We use a small timeout to avoid the "cascading renders" lint error
+    // which can happen if setState is called synchronously in useEffect
+    const timer = setTimeout(() => {
+      setStars(
+        Array.from({ length: 60 }, () => ({
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          size: Math.random() * 2 + 0.5,
+          opacity: Math.random() * 0.5 + 0.2,
+          twinkleSpeed: Math.random() * 3 + 2,
+          twinkleDelay: Math.random() * 5,
+        }))
+      );
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   if (stars.length === 0) return null;
@@ -33,7 +38,7 @@ export default function StarBackground() {
   return (
     <div
       className="fixed inset-0 pointer-events-none overflow-hidden"
-      style={{ zIndex: 0 }}
+      style={{ zIndex: -1 }} // Ensure it's behind everything
       aria-hidden="true"
     >
       {stars.map((star, i) => (

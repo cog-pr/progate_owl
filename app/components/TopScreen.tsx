@@ -99,8 +99,11 @@ export default function TopScreen({
         </div>
       ) : (
         <button
-          onClick={onStartCapture}
-          className="btn-gold animate-pulse-glow animate-fade-in-up delay-300"
+          onClick={() => {
+            console.log("Start capture clicked");
+            onStartCapture();
+          }}
+          className="btn-gold animate-pulse-glow"
           id="start-capture-btn"
         >
           🦉 今日のフクロウを生む
