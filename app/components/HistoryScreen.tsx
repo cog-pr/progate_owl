@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 interface OwlRecord {
   date: string;
@@ -16,6 +17,10 @@ interface HistoryScreenProps {
 
 export default function HistoryScreen({ history, onGoTop }: HistoryScreenProps) {
   const [selected, setSelected] = useState<OwlRecord | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Portal用にクライアントサイドでのみマウント
+  useEffect(() => { setMounted(true); }, []);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
@@ -43,6 +48,57 @@ export default function HistoryScreen({ history, onGoTop }: HistoryScreenProps) 
     document.body.style.overflow = selected ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [selected]);
+
+  const lightbox = selected && mounted ? createPortal(
+    <div
+      className="owl-lightbox-overlay"
+      onClick={closeLightbox}
+      role="dialog"
+      aria-modal="true"
+      aria-label="フクロウ拡大表示"
+      id="owl-lightbox"
+    >
+      <div
+        className="owl-lightbox-content"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 閉じるボタン */}
+        <button
+          className="owl-lightbox-close"
+          onClick={closeLightbox}
+          aria-label="閉じる"
+          id="owl-lightbox-close-btn"
+        >
+          ✕
+        </button>
+
+        {/* 画像 */}
+        <img
+          src={selected.imageUrl}
+          alt={`${selected.date}のフクロウ`}
+          className="owl-lightbox-img"
+        />
+
+        {/* 情報エリア */}
+        <div className="owl-lightbox-info">
+          <p className="owl-lightbox-date">📅 {formatDate(selected.date)}</p>
+          {selected.labels.length > 0 && (
+            <div className="owl-lightbox-labels">
+              {selected.labels.map((label) => (
+                <span key={label} className="owl-lightbox-label">
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+          {selected.message && (
+            <p className="owl-lightbox-message">"{selected.message}"</p>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
 
   return (
     <>
@@ -131,56 +187,7 @@ export default function HistoryScreen({ history, onGoTop }: HistoryScreenProps) 
         )}
       </div>
 
-      {/* ライトボックスモーダル */}
-      {selected && (
-        <div
-          className="owl-lightbox-overlay"
-          onClick={closeLightbox}
-          role="dialog"
-          aria-modal="true"
-          aria-label="フクロウ拡大表示"
-          id="owl-lightbox"
-        >
-          <div
-            className="owl-lightbox-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 閉じるボタン */}
-            <button
-              className="owl-lightbox-close"
-              onClick={closeLightbox}
-              aria-label="閉じる"
-              id="owl-lightbox-close-btn"
-            >
-              ✕
-            </button>
-
-            {/* 画像 */}
-            <img
-              src={selected.imageUrl}
-              alt={`${selected.date}のフクロウ`}
-              className="owl-lightbox-img"
-            />
-
-            {/* 情報エリア */}
-            <div className="owl-lightbox-info">
-              <p className="owl-lightbox-date">📅 {formatDate(selected.date)}</p>
-              {selected.labels.length > 0 && (
-                <div className="owl-lightbox-labels">
-                  {selected.labels.map((label) => (
-                    <span key={label} className="owl-lightbox-label">
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {selected.message && (
-                <p className="owl-lightbox-message">"{selected.message}"</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {lightbox}
     </>
   );
-}
+}
