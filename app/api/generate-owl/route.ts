@@ -44,10 +44,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!backendRes.ok) {
-      const errBody = await backendRes.text();
-      console.error("Backend error:", backendRes.status, errBody);
+      let errMessage = "フクロウの生成に失敗しました";
+      try {
+        const errData = await backendRes.json();
+        if (errData.error) {
+          errMessage = errData.error;
+        }
+        console.error("Backend API Error:", backendRes.status, errData);
+      } catch (parseErr) {
+        const errBody = await backendRes.text();
+        console.error("Backend text error:", backendRes.status, errBody);
+      }
       return Response.json(
-        { error: "フクロウの生成に失敗しました" },
+        { error: errMessage },
         { status: 502 }
       );
     }
