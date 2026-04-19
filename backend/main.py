@@ -48,7 +48,12 @@ async def analyze_image(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail=f"画像認識に失敗しました: {str(e)}")
 
         # Bedrockで画像生成
-        prompt = f"a cute anime-style illustration of owl inspired by the food out of {', '.join(labels)}"
+        prompt = (
+            f"A cute, simple flat vector art illustration of an owl. "
+            f"The owl must be strongly themed after the food: {', '.join(labels)}. "
+            f"Please incorporate the ingredients, shapes, and colors of {', '.join(labels)} directly into the owl's design and body. "
+            f"Minimalist, clean flat colors, no outlines, pastel background, high quality, kawaii design."
+        )
 
         bedrock_payload = {
             "prompt": prompt,
