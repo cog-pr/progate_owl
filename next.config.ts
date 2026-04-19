@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // output: "standalone", // AWS Amplifyを使用する場合はコメントアウトまたは削除を推奨します
   images: {
     unoptimized: true,
     remotePatterns: [
