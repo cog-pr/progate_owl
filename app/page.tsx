@@ -185,6 +185,9 @@ export default function Home() {
           body: formData,
         });
 
+        console.log("res");
+        console.log(res);
+
         if (!res.ok) {
           const errorData = await res.json().catch(() => null);
           throw new Error(errorData?.error || "フクロウの生成に失敗しました");
@@ -192,11 +195,14 @@ export default function Home() {
 
         const data: OwlResult = await res.json();
 
+        console.log("data");
+        console.log(data);
+
         const record: OwlRecord = {
           date: getTodayStr(),
           imageUrl: data.image_url,
-          labels: data.labels,
-          message: data.message,
+          labels: data.labels || [],
+          message: data.message || "",
         };
 
         saveTodayResult(loggedInUser, record);

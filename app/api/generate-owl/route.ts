@@ -2,25 +2,8 @@ import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Dummy owl labels for fallback
-const DUMMY_LABEL_SETS = [
-  ["Rice", "Fish", "Miso Soup"],
-  ["Pasta", "Salad", "Bread"],
-  ["Curry", "Rice", "Vegetables"],
-  ["Ramen", "Egg", "Noodles"],
-  ["Sushi", "Rice", "Seafood"],
-  ["Steak", "Potato", "Wine"],
-  ["Pizza", "Cheese", "Tomato"],
-  ["Udon", "Tempura", "Green Onion"],
-];
-
-const DUMMY_MESSAGES = [
-  "今夜のごはんから、こんなフクロウが現れました",
-  "今日のフクロウが生まれました 🦉",
-  "あなたの夜ご飯から、温かいフクロウが生まれました",
-  "今夜も素敵なフクロウに出会えましたね",
-  "夜ご飯の力を借りて、フクロウが目覚めました",
-];
+// FastAPIバックエンドのURL
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
+    // ファイル形式チェック
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic"];
     if (!allowedTypes.includes(image.type)) {
       return Response.json(
@@ -43,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (5MB)
+    // ファイルサイズチェック (5MB)
     if (image.size > 5 * 1024 * 1024) {
       return Response.json(
         { error: "画像サイズが大きすぎます（5MB以下にしてください）" },
@@ -51,19 +34,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Dummy Response (Frontend-only mode) ──────────
-    // Simulate processing delay
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+    // FastAPIバックエンドに転送
+    const backendForm = new FormData();
+    backendForm.append("file", image);
 
-    const randomLabels =
-      DUMMY_LABEL_SETS[Math.floor(Math.random() * DUMMY_LABEL_SETS.length)];
-    const randomMessage =
-      DUMMY_MESSAGES[Math.floor(Math.random() * DUMMY_MESSAGES.length)];
+    const backendRes = await fetch(`${BACKEND_URL}/analyze-image`, {
+      method: "POST",
+      body: backendForm,
+    });
 
+    if (!backendRes.ok) {
+      let errMessage = "フクロウの生成に失敗しました";
+      try {
+        const errData = await backendRes.json();
+        if (errData.error) {
+          errMessage = errData.error;
+        }
+        console.error("Backend API Error:", backendRes.status, errData);
+      } catch (parseErr) {
+        const errBody = await backendRes.text();
+        console.error("Backend text error:", backendRes.status, errBody);
+      }
+      return Response.json(
+        { error: errMessage },
+        { status: 502 }
+      );
+    }
+
+    const data = await backendRes.json();
+
+    // バックエンドが { image_url, labels, message } を返す
     return Response.json({
-      image_url: "/owl-fallback.png",
-      labels: randomLabels,
-      message: randomMessage,
+      image_url: data.image_url,
+      labels: data.labels,
+      message: data.message,
     });
   } catch (err) {
     console.error("Generate owl error:", err);
