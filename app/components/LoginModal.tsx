@@ -2,106 +2,177 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { loginUser, registerUser } from "../lib/authUtils";
+
+type AuthTab = "login" | "register";
 
 interface LoginModalProps {
-  onClose: () => void;
-  onLogin: (email: string) => void;
+  onClose?: () => void;
+  onLogin: (username: string) => void;
+  /** true の場合は閉じるボタンを非表示（ログイン必須画面） */
+  required?: boolean;
+  /** 初期表示タブ */
+  initialTab?: AuthTab;
 }
 
-export default function LoginModal({ onClose, onLogin }: LoginModalProps) {
+export default function LoginModal({
+  onClose,
+  onLogin,
+  required = false,
+  initialTab = "login",
+}: LoginModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [email, setEmail] = useState("");
+  const [tab, setTab] = useState<AuthTab>(initialTab);
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
-
-  // ESCで閉じる
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // タブ切替時にフォームリセット
+  const switchTab = useCallback((newTab: AuthTab) => {
+    setTab(newTab);
+    setUsername("");
+    setPassword("");
+    setConfirmPassword("");
+    setError(null);
+  }, []);
+
+  // ESCで閉じる（required でない場合のみ）
+  useEffect(() => {
+    if (required) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onClose?.();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, required]);
 
   // スクロールロック
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, []);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
 
-    if (!email.trim()) {
-      setError("メールアドレスを入力してください");
-      return;
-    }
-    if (!password) {
-      setError("パスワードを入力してください");
-      return;
-    }
+      if (tab === "register") {
+        // ─── 新規登録 ───
+        if (password !== confirmPassword) {
+          setError("パスワードが一致しません");
+          return;
+        }
 
-    setIsLoading(true);
-    // 認証処理（現時点はダミー：1秒後にログイン成功）
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsLoading(false);
-    onLogin(email);
-  }, [email, password, onLogin]);
+        setIsLoading(true);
+        const result = await registerUser(username, password);
+        setIsLoading(false);
+
+        if (result.ok) {
+          onLogin(result.username);
+        } else {
+          setError(result.error);
+        }
+      } else {
+        // ─── ログイン ───
+        setIsLoading(true);
+        const result = await loginUser(username, password);
+        setIsLoading(false);
+
+        if (result.ok) {
+          onLogin(result.username);
+        } else {
+          setError(result.error);
+        }
+      }
+    },
+    [tab, username, password, confirmPassword, onLogin]
+  );
 
   if (!mounted) return null;
 
-  return createPortal(
+  const content = (
     <div
-      className="login-modal-overlay"
-      onClick={onClose}
+      className={`login-modal-overlay ${required ? "login-required-bg" : ""}`}
+      onClick={required ? undefined : onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="ログイン"
+      aria-label={tab === "login" ? "ログイン" : "新規登録"}
       id="login-modal"
     >
-      <div
-        className="login-modal-content"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 閉じるボタン */}
-        <button
-          className="login-modal-close"
-          onClick={onClose}
-          aria-label="閉じる"
-          id="login-modal-close-btn"
-        >
-          ✕
-        </button>
+      <div className="login-modal-content" onClick={(e) => e.stopPropagation()}>
+        {/* 閉じるボタン（required でない場合のみ） */}
+        {!required && (
+          <button
+            className="login-modal-close"
+            onClick={onClose}
+            aria-label="閉じる"
+            id="login-modal-close-btn"
+          >
+            ✕
+          </button>
+        )}
 
         {/* ヘッダー */}
         <div className="login-modal-header">
           <div className="login-modal-icon">🦉</div>
-          <h2 className="login-modal-title">ログイン</h2>
-          <p className="login-modal-subtitle">アカウントにサインインして続ける</p>
+          <h2 className="login-modal-title">
+            {tab === "login" ? "おかえりなさい" : "はじめまして"}
+          </h2>
+          <p className="login-modal-subtitle">
+            {tab === "login"
+              ? "ユーザー名とパスワードでサインイン"
+              : "アカウントを作成して始めましょう"}
+          </p>
+        </div>
+
+        {/* タブ切替 */}
+        <div className="login-tabs">
+          <button
+            className={`login-tab ${tab === "login" ? "login-tab-active" : ""}`}
+            onClick={() => switchTab("login")}
+            type="button"
+            id="tab-login"
+          >
+            ログイン
+          </button>
+          <button
+            className={`login-tab ${tab === "register" ? "login-tab-active" : ""}`}
+            onClick={() => switchTab("register")}
+            type="button"
+            id="tab-register"
+          >
+            新規登録
+          </button>
         </div>
 
         {/* フォーム */}
         <form onSubmit={handleSubmit} className="login-modal-form" noValidate>
-          {/* メールアドレス */}
+          {/* ユーザー名 */}
           <div className="login-field">
-            <label htmlFor="login-email" className="login-label">
-              メールアドレス
+            <label htmlFor="login-username" className="login-label">
+              ユーザー名
             </label>
             <input
-              id="login-email"
-              type="email"
+              id="login-username"
+              type="text"
               className="login-input"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="お好きな名前を入力"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
               autoFocus
               disabled={isLoading}
+              maxLength={20}
             />
           </div>
 
@@ -118,19 +189,56 @@ export default function LoginModal({ onClose, onLogin }: LoginModalProps) {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
+                autoComplete={
+                  tab === "login" ? "current-password" : "new-password"
+                }
                 disabled={isLoading}
               />
               <button
                 type="button"
                 className="login-eye-btn"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示"}
+                aria-label={
+                  showPassword ? "パスワードを隠す" : "パスワードを表示"
+                }
               >
                 {showPassword ? "🙈" : "👁"}
               </button>
             </div>
           </div>
+
+          {/* パスワード確認（新規登録のみ） */}
+          {tab === "register" && (
+            <div className="login-field animate-fade-in">
+              <label htmlFor="login-confirm-password" className="login-label">
+                パスワード（確認）
+              </label>
+              <div className="login-input-wrap">
+                <input
+                  id="login-confirm-password"
+                  type={showPassword ? "text" : "password"}
+                  className="login-input"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* パスワード注意書き（新規登録のみ） */}
+          {tab === "register" && (
+            <div className="login-password-warning animate-fade-in">
+              <span className="login-warning-icon">⚠️</span>
+              <p>
+                パスワードを忘れると再設定できません。
+                <br />
+                大切に保管してください。
+              </p>
+            </div>
+          )}
 
           {/* エラー */}
           {error && (
@@ -152,21 +260,45 @@ export default function LoginModal({ onClose, onLogin }: LoginModalProps) {
                 <span />
                 <span />
               </span>
-            ) : (
+            ) : tab === "login" ? (
               "ログイン"
+            ) : (
+              "アカウントを作成"
             )}
           </button>
         </form>
 
         {/* フッター */}
         <p className="login-footer">
-          アカウントをお持ちでない方は
-          <button className="login-link" id="login-signup-link">
-            新規登録
-          </button>
+          {tab === "login" ? (
+            <>
+              アカウントをお持ちでない方は
+              <button
+                className="login-link"
+                id="login-signup-link"
+                onClick={() => switchTab("register")}
+                type="button"
+              >
+                新規登録
+              </button>
+            </>
+          ) : (
+            <>
+              既にアカウントをお持ちの方は
+              <button
+                className="login-link"
+                id="login-signin-link"
+                onClick={() => switchTab("login")}
+                type="button"
+              >
+                ログイン
+              </button>
+            </>
+          )}
         </p>
       </div>
-    </div>,
-    document.body
+    </div>
   );
+
+  return createPortal(content, document.body);
 }

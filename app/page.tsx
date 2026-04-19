@@ -8,6 +8,13 @@ import CaptureScreen from "./components/CaptureScreen";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultScreen from "./components/ResultScreen";
 import LoginModal from "./components/LoginModal";
+import {
+  getCurrentUser,
+  logoutUser,
+  historyKey,
+  todayResultKey,
+  generatedDateKey,
+} from "./lib/authUtils";
 
 type Screen = "top" | "capture" | "loading" | "result";
 
@@ -32,22 +39,24 @@ function getTodayStr(): string {
   return `${y}-${m}-${d}`;
 }
 
-function loadHistory(): OwlRecord[] {
+// ─── User-scoped Storage Helpers ─────────────────────
+
+function loadHistory(email: string): OwlRecord[] {
   try {
-    const raw = localStorage.getItem("owlHistory");
+    const raw = localStorage.getItem(historyKey(email));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function saveHistory(history: OwlRecord[]) {
-  localStorage.setItem("owlHistory", JSON.stringify(history));
+function saveHistory(email: string, history: OwlRecord[]) {
+  localStorage.setItem(historyKey(email), JSON.stringify(history));
 }
 
-function loadTodayResult(): OwlRecord | null {
+function loadTodayResult(email: string): OwlRecord | null {
   try {
-    const raw = localStorage.getItem("lastOwlResult");
+    const raw = localStorage.getItem(todayResultKey(email));
     if (!raw) return null;
     const record: OwlRecord = JSON.parse(raw);
     if (record.date === getTodayStr()) return record;
@@ -57,14 +66,14 @@ function loadTodayResult(): OwlRecord | null {
   }
 }
 
-function saveTodayResult(record: OwlRecord) {
-  localStorage.setItem("lastOwlResult", JSON.stringify(record));
-  localStorage.setItem("lastGeneratedDate", record.date);
+function saveTodayResult(email: string, record: OwlRecord) {
+  localStorage.setItem(todayResultKey(email), JSON.stringify(record));
+  localStorage.setItem(generatedDateKey(email), record.date);
 }
 
-function hasGeneratedTodayCheck(): boolean {
+function hasGeneratedTodayCheck(email: string): boolean {
   try {
-    return localStorage.getItem("lastGeneratedDate") === getTodayStr();
+    return localStorage.getItem(generatedDateKey(email)) === getTodayStr();
   } catch {
     return false;
   }
@@ -78,17 +87,44 @@ export default function Home() {
   const [history, setHistory] = useState<OwlRecord[]>([]);
   const [currentResult, setCurrentResult] = useState<OwlRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
+  // ─── 初期化: ログイン状態の復元 ─────────────────────
   useEffect(() => {
-    setHasGeneratedToday(hasGeneratedTodayCheck());
-    setHistory(loadHistory());
-
-    const todayResult = loadTodayResult();
-    if (todayResult) {
-      setCurrentResult(todayResult);
+    const user = getCurrentUser();
+    if (user) {
+      setLoggedInUser(user);
+      setHasGeneratedToday(hasGeneratedTodayCheck(user));
+      setHistory(loadHistory(user));
+      const todayResult = loadTodayResult(user);
+      if (todayResult) {
+        setCurrentResult(todayResult);
+      }
     }
+    setAuthChecked(true);
+  }, []);
+
+  // ─── ログイン成功時: ユーザーデータを読み込む ───────
+  const handleLogin = useCallback((email: string) => {
+    setLoggedInUser(email);
+    setHasGeneratedToday(hasGeneratedTodayCheck(email));
+    setHistory(loadHistory(email));
+    const todayResult = loadTodayResult(email);
+    setCurrentResult(todayResult);
+    setScreen("top");
+    setError(null);
+  }, []);
+
+  // ─── ログアウト ─────────────────────────────────────
+  const handleLogout = useCallback(() => {
+    logoutUser();
+    setLoggedInUser(null);
+    setHasGeneratedToday(false);
+    setHistory([]);
+    setCurrentResult(null);
+    setScreen("top");
+    setError(null);
   }, []);
 
   const handleStartCapture = useCallback(() => {
@@ -111,95 +147,93 @@ export default function Home() {
     setError(null);
   }, []);
 
-  const handleOpenLogin = useCallback(() => {
-    setShowLoginModal(true);
-  }, []);
+  const handleSubmitPhoto = useCallback(
+    async (file: File) => {
+      if (!loggedInUser) return;
 
-  const handleCloseLogin = useCallback(() => {
-    setShowLoginModal(false);
-  }, []);
+      setScreen("loading");
+      setError(null);
 
-  const handleLogin = useCallback((email: string) => {
-    setLoggedInUser(email);
-    setShowLoginModal(false);
-  }, []);
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
 
-  const handleLogout = useCallback(() => {
-    setLoggedInUser(null);
-  }, []);
+        const res = await fetch("/api/generate-owl", {
+          method: "POST",
+          body: formData,
+        });
 
-  const handleSubmitPhoto = useCallback(async (file: File) => {
-    setScreen("loading");
-    setError(null);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(errorData?.error || "フクロウの生成に失敗しました");
+        }
 
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
+        const data: OwlResult = await res.json();
 
-      const res = await fetch("/api/generate-owl", {
-        method: "POST",
-        body: formData,
-      });
+        const record: OwlRecord = {
+          date: getTodayStr(),
+          imageUrl: data.image_url,
+          labels: data.labels,
+          message: data.message,
+        };
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.error || "フクロウの生成に失敗しました");
+        saveTodayResult(loggedInUser, record);
+
+        const updatedHistory = [...loadHistory(loggedInUser), record];
+        saveHistory(loggedInUser, updatedHistory);
+
+        setCurrentResult(record);
+        setHistory(updatedHistory);
+        setHasGeneratedToday(true);
+        setScreen("result");
+      } catch (err) {
+        console.error("Generation failed:", err);
+        setError(
+          err instanceof Error ? err.message : "フクロウの生成に失敗しました"
+        );
+        setScreen("capture");
       }
+    },
+    [loggedInUser]
+  );
 
-      const data: OwlResult = await res.json();
+  // 認証チェックが完了するまではスプラッシュ表示
+  if (!authChecked) {
+    return (
+      <div className="relative flex flex-col flex-1 min-h-dvh">
+        <StarBackground />
+      </div>
+    );
+  }
 
-      const record: OwlRecord = {
-        date: getTodayStr(),
-        imageUrl: data.image_url,
-        labels: data.labels,
-        message: data.message,
-      };
+  // ─── 未ログイン: ログイン画面を全画面表示 ───────────
+  if (!loggedInUser) {
+    return (
+      <div className="relative flex flex-col flex-1 min-h-dvh">
+        <StarBackground />
+        <LoginModal onLogin={handleLogin} required />
+      </div>
+    );
+  }
 
-      saveTodayResult(record);
-
-      const updatedHistory = [...loadHistory(), record];
-      saveHistory(updatedHistory);
-
-      setCurrentResult(record);
-      setHistory(updatedHistory);
-      setHasGeneratedToday(true);
-      setScreen("result");
-    } catch (err) {
-      console.error("Generation failed:", err);
-      setError(
-        err instanceof Error ? err.message : "フクロウの生成に失敗しました"
-      );
-      setScreen("capture");
-    }
-  }, []);
-
+  // ─── ログイン済み: アプリ本体 ──────────────────────
   return (
     <div className="relative flex flex-col flex-1 min-h-dvh">
       <StarBackground />
 
       {/* ログインバー（画面右上固定） */}
       <div className="login-top-bar">
-        {loggedInUser ? (
-          <div className="login-user-badge">
-            <span className="login-user-avatar">🦉</span>
-            <span className="login-user-name">{loggedInUser}</span>
-            <button
-              onClick={handleLogout}
-              className="login-logout-btn"
-              id="logout-btn"
-            >
-              ログアウト
-            </button>
-          </div>
-        ) : (
+        <div className="login-user-badge">
+          <span className="login-user-avatar">🦉</span>
+          <span className="login-user-name">{loggedInUser}</span>
           <button
-            onClick={handleOpenLogin}
-            className="login-header-btn"
-            id="login-btn"
+            onClick={handleLogout}
+            className="login-logout-btn"
+            id="logout-btn"
           >
-            ログイン
+            ログアウト
           </button>
-        )}
+        </div>
       </div>
 
       <main className="relative z-10 flex flex-col flex-1 w-full max-w-lg mx-auto">
@@ -210,9 +244,6 @@ export default function Home() {
             onShowHistory={handleShowHistory}
             onViewTodayOwl={handleViewTodayOwl}
             historyCount={history.length}
-            onLogin={handleOpenLogin}
-            loggedInUser={loggedInUser}
-            onLogout={handleLogout}
           />
         )}
 
@@ -258,14 +289,6 @@ export default function Home() {
           />
         )}
       </main>
-
-      {/* ログインモーダル */}
-      {showLoginModal && (
-        <LoginModal
-          onClose={handleCloseLogin}
-          onLogin={handleLogin}
-        />
-      )}
     </div>
   );
 }
