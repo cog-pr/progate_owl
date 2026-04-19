@@ -6,6 +6,8 @@ import StarBackground from "../components/StarBackground";
 import HistoryScreen from "../components/HistoryScreen";
 import { getCurrentUser, historyKey } from "../lib/authUtils";
 
+import { getDB } from "../lib/dbUtils";
+
 interface OwlRecord {
   date: string;
   imageUrl: string;
@@ -13,10 +15,10 @@ interface OwlRecord {
   message: string;
 }
 
-function loadHistory(email: string): OwlRecord[] {
+async function loadHistory(email: string): Promise<OwlRecord[]> {
   try {
-    const raw = localStorage.getItem(historyKey(email));
-    return raw ? JSON.parse(raw) : [];
+    const records = await getDB<OwlRecord[]>(historyKey(email));
+    return records || [];
   } catch {
     return [];
   }
@@ -28,14 +30,18 @@ export default function ForestPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (!user) {
-      // 未ログイン → トップへリダイレクト
-      router.replace("/");
-      return;
-    }
-    setHistory(loadHistory(user));
-    setReady(true);
+    const init = async () => {
+      const user = getCurrentUser();
+      if (!user) {
+        // 未ログイン → トップへリダイレクト
+        router.replace("/");
+        return;
+      }
+      const loadedHistory = await loadHistory(user);
+      setHistory(loadedHistory);
+      setReady(true);
+    };
+    init();
   }, [router]);
 
   const handleGoTop = useCallback(() => {

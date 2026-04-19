@@ -39,36 +39,44 @@ function getTodayStr(): string {
   return `${y}-${m}-${d}`;
 }
 
+import { getDB, setDB } from "./lib/dbUtils";
+
 // ─── User-scoped Storage Helpers ─────────────────────
 
-function loadHistory(email: string): OwlRecord[] {
+async function loadHistory(email: string): Promise<OwlRecord[]> {
   try {
-    const raw = localStorage.getItem(historyKey(email));
-    return raw ? JSON.parse(raw) : [];
+    const records = await getDB<OwlRecord[]>(historyKey(email));
+    return records || [];
   } catch {
     return [];
   }
 }
 
-function saveHistory(email: string, history: OwlRecord[]) {
-  localStorage.setItem(historyKey(email), JSON.stringify(history));
+async function saveHistory(email: string, history: OwlRecord[]) {
+  try {
+    await setDB(historyKey(email), history);
+  } catch (err) {
+    console.error("Failed to save history to DB:", err);
+  }
 }
 
-function loadTodayResult(email: string): OwlRecord | null {
+async function loadTodayResult(email: string): Promise<OwlRecord | null> {
   try {
-    const raw = localStorage.getItem(todayResultKey(email));
-    if (!raw) return null;
-    const record: OwlRecord = JSON.parse(raw);
-    if (record.date === getTodayStr()) return record;
+    const record = await getDB<OwlRecord>(todayResultKey(email));
+    if (record && record.date === getTodayStr()) return record;
     return null;
   } catch {
     return null;
   }
 }
 
-function saveTodayResult(email: string, record: OwlRecord) {
-  localStorage.setItem(todayResultKey(email), JSON.stringify(record));
-  localStorage.setItem(generatedDateKey(email), record.date);
+async function saveTodayResult(email: string, record: OwlRecord) {
+  try {
+    await setDB(todayResultKey(email), record);
+    localStorage.setItem(generatedDateKey(email), record.date);
+  } catch (err) {
+    console.error("Failed to save today result to DB:", err);
+  }
 }
 
 function hasGeneratedTodayCheck(email: string): boolean {
@@ -93,26 +101,40 @@ export default function Home() {
 
   // ─── 初期化: ログイン状態の復元 ─────────────────────
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setLoggedInUser(user);
-      setHasGeneratedToday(hasGeneratedTodayCheck(user));
-      setHistory(loadHistory(user));
-      const todayResult = loadTodayResult(user);
-      if (todayResult) {
-        setCurrentResult(todayResult);
+    const init = async () => {
+      const user = getCurrentUser();
+      if (user) {
+        setLoggedInUser(user);
+        setHasGeneratedToday(hasGeneratedTodayCheck(user));
+        
+        const [loadedHistory, todayResult] = await Promise.all([
+          loadHistory(user),
+          loadTodayResult(user)
+        ]);
+
+        setHistory(loadedHistory);
+        if (todayResult) {
+          setCurrentResult(todayResult);
+        }
       }
-    }
-    setAuthChecked(true);
+      setAuthChecked(true);
+    };
+    init();
   }, []);
 
   // ─── ログイン成功時: ユーザーデータを読み込む ───────
-  const handleLogin = useCallback((email: string) => {
+  const handleLogin = useCallback(async (email: string) => {
     setLoggedInUser(email);
     setHasGeneratedToday(hasGeneratedTodayCheck(email));
-    setHistory(loadHistory(email));
-    const todayResult = loadTodayResult(email);
+    
+    const [loadedHistory, todayResult] = await Promise.all([
+      loadHistory(email),
+      loadTodayResult(email)
+    ]);
+
+    setHistory(loadedHistory);
     setCurrentResult(todayResult);
+    
     setScreen("top");
     setError(null);
   }, []);
@@ -184,10 +206,11 @@ export default function Home() {
           message: data.message || "",
         };
 
-        saveTodayResult(loggedInUser, record);
+        await saveTodayResult(loggedInUser, record);
 
-        const updatedHistory = [...loadHistory(loggedInUser), record];
-        saveHistory(loggedInUser, updatedHistory);
+        const currentHistory = await loadHistory(loggedInUser);
+        const updatedHistory = [...currentHistory, record];
+        await saveHistory(loggedInUser, updatedHistory);
 
         setCurrentResult(record);
         setHistory(updatedHistory);
