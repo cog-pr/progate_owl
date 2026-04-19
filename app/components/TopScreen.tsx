@@ -123,7 +123,7 @@ export default function TopScreen({
         className="mb-2 text-3xl font-bold animate-fade-in-up"
         style={{ color: "var(--accent-gold)" }}
       >
-        fukurou_app
+        Owl Snap
       </h1>
 
       {/* Subtitle */}
