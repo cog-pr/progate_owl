@@ -49,10 +49,11 @@ async def analyze_image(file: UploadFile = File(...)):
 
         # Bedrockで画像生成
         prompt = (
-            f"A cute, simple flat vector art illustration of an owl. "
-            f"The owl must be strongly themed after the food: {', '.join(labels)}. "
-            f"Please incorporate the ingredients, shapes, and colors of {', '.join(labels)} directly into the owl's design and body. "
-            f"Minimalist, clean flat colors, no outlines, pastel background, high quality, kawaii design."
+            f"A highly surreal and imaginative illustration of a fantasy owl entirely constructed from the food: {', '.join(labels)}. "
+            f"The owl does not need to look realistic. Its body, feathers, and features must be vividly replaced by the exact colors, textures, and details of {', '.join(labels)}. "
+            f"Make the food elements extremely prominent and surreal. "
+            f"Additionally, the actual food items ({', '.join(labels)}) must appear scattered around the owl in the scene. "
+            f"High quality, rich colors, highly detailed food textures, appetizing, creative surrealism."
         )
 
         bedrock_payload = {
