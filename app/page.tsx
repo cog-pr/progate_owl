@@ -89,6 +89,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
 
   // ─── 初期化: ログイン状態の復元 ─────────────────────
   useEffect(() => {
@@ -202,6 +203,62 @@ export default function Home() {
     return (
       <div className="relative flex flex-col flex-1 min-h-dvh">
         <StarBackground />
+      </div>
+    );
+  }
+
+  // ─── ホーム（ランディング）画面 ───────────
+  if (showLanding) {
+    return (
+      <div className="relative flex flex-col flex-1 min-h-dvh items-center justify-center p-6 text-center z-10">
+        <StarBackground />
+        
+        <div className="animate-float-slow mb-6">
+          <svg
+            width="80"
+            height="80"
+            viewBox="0 0 96 96"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-label="フクロウアイコン"
+          >
+            <ellipse cx="48" cy="56" rx="28" ry="30" fill="#1a1e3a" stroke="#f0c040" strokeWidth="2" />
+            <circle cx="48" cy="32" r="22" fill="#1a1e3a" stroke="#f0c040" strokeWidth="2" />
+            <path d="M30 16L36 26" stroke="#f0c040" strokeWidth="2" strokeLinecap="round" />
+            <path d="M66 16L60 26" stroke="#f0c040" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="39" cy="32" r="8" fill="#0a0e27" stroke="#f0c040" strokeWidth="1.5" />
+            <circle cx="57" cy="32" r="8" fill="#0a0e27" stroke="#f0c040" strokeWidth="1.5" />
+            <circle cx="40" cy="31" r="3" fill="#f0c040" />
+            <circle cx="58" cy="31" r="3" fill="#f0c040" />
+            <circle cx="41" cy="30" r="1" fill="white" />
+            <circle cx="59" cy="30" r="1" fill="white" />
+            <path d="M45 38L48 42L51 38" fill="#f59e0b" stroke="#f59e0b" strokeWidth="1" strokeLinejoin="round" />
+            <path d="M20 52C16 56 16 66 22 70" stroke="#f0c040" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            <path d="M76 52C80 56 80 66 74 70" stroke="#f0c040" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            <ellipse cx="48" cy="64" rx="12" ry="14" fill="none" stroke="rgba(240,192,64,0.3)" strokeWidth="1" />
+            <ellipse cx="48" cy="60" rx="8" ry="10" fill="none" stroke="rgba(240,192,64,0.15)" strokeWidth="1" />
+          </svg>
+        </div>
+
+        <h1 
+          className="text-5xl font-bold mb-4 animate-fade-in-up" 
+          style={{ color: "var(--accent-gold)", letterSpacing: "0.05em" }}
+        >
+          Owl Snap
+        </h1>
+        <p 
+          className="text-base mb-8 animate-fade-in-up delay-100 max-w-md leading-relaxed" 
+          style={{ color: "var(--text-secondary)" }}
+        >
+          夜ご飯を撮って、あなただけのフクロウを生み出そう。<br />
+          忙しい日でも、夜ご飯くらいはちゃんと食べよう。
+        </p>
+        <button
+          className="btn-gold animate-fade-in-up delay-200 animate-pulse-glow"
+          onClick={() => setShowLanding(false)}
+        >
+          アプリを始める
+        </button>
       </div>
     );
   }
