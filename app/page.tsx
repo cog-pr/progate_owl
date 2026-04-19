@@ -14,6 +14,7 @@ import {
   historyKey,
   todayResultKey,
   generatedDateKey,
+  deleteUser,
 } from "./lib/authUtils";
 
 type Screen = "top" | "capture" | "loading" | "result";
@@ -126,7 +127,27 @@ export default function Home() {
     setCurrentResult(null);
     setScreen("top");
     setError(null);
+    setShowLanding(true); // ログアウト時にホーム画面に戻る
   }, []);
+
+  // ─── アカウント削除 ──────────────────────────────────
+  const handleDeleteAccount = useCallback(() => {
+    if (!loggedInUser) return;
+    if (
+      window.confirm(
+        "本当にアカウントを削除しますか？これまでのフクロウのデータもすべて消去され、元に戻すことはできません。"
+      )
+    ) {
+      deleteUser(loggedInUser);
+      setLoggedInUser(null);
+      setHasGeneratedToday(false);
+      setHistory([]);
+      setCurrentResult(null);
+      setScreen("top");
+      setError(null);
+      setShowLanding(true); // 退会時にホーム画面に戻る
+    }
+  }, [loggedInUser]);
 
   const handleStartCapture = useCallback(() => {
     setScreen("capture");
@@ -289,6 +310,14 @@ export default function Home() {
             id="logout-btn"
           >
             ログアウト
+          </button>
+          <button
+            onClick={handleDeleteAccount}
+            className="login-logout-btn"
+            style={{ color: "#f87171", borderColor: "rgba(248, 113, 113, 0.3)", marginLeft: "0.5rem" }}
+            id="delete-account-btn"
+          >
+            退会
           </button>
         </div>
       </div>
