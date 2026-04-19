@@ -140,3 +140,24 @@ export function todayResultKey(username: string): string {
 export function generatedDateKey(username: string): string {
   return `lastGeneratedDate_${username}`;
 }
+
+// ─── Account Deletion ────────────────────────────────
+
+/** アカウント削除（退会） */
+export function deleteUser(username: string) {
+  // 1. ユーザーリストから削除
+  const users = loadUsers();
+  const updatedUsers = users.filter((u) => u.username !== username);
+  saveUsers(updatedUsers);
+
+  // 2. 関連するユーザーデータの削除
+  localStorage.removeItem(historyKey(username));
+  localStorage.removeItem(todayResultKey(username));
+  localStorage.removeItem(generatedDateKey(username));
+
+  // 3. 現在のログインセッションがこのユーザーならログアウト
+  if (getCurrentUser() === username) {
+    logoutUser();
+  }
+}
+
