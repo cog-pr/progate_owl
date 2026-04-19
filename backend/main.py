@@ -29,45 +29,61 @@ MESSAGES = [
 
 @app.post("/analyze-image")
 async def analyze_image(file: UploadFile = File(...)):
-    contents = await file.read()
+    try:
+        contents = await file.read()
 
-    # Rekognitionでラベル検出
-    rekognition_response = rekognition.detect_labels(
-        Image={"Bytes": contents},
-        MaxLabels=5,
-    )
+        # Rekognitionでラベル検出
+        try:
+            rekognition_response = rekognition.detect_labels(
+                Image={"Bytes": contents},
+                MaxLabels=5,
+            )
+            labels = [label["Name"] for label in rekognition_response["Labels"]]
+            print(f"DEBUG: Rekognition labels found: {labels}")
+            
+            if not labels:
+                labels = ["Unknown Food"] # Rekognitionで何も検出されなかった場合のフォールバック
+        except Exception as e:
+            print(f"ERROR: Rekognition API failed: {str(e)}")
+            return {"error": "画像認識に失敗しました", "details": str(e)}
 
-    labels = [label["Name"] for label in rekognition_response["Labels"]]
-    print(f"DEBUG: Rekognition labels found: {labels}")
+        # Bedrockで画像生成
+        prompt = f"a cute anime-style illustration of owl inspired by the food out of {', '.join(labels)}"
 
-    # Bedrockで画像生成
-    prompt = f"a cute anime-style illustration of owl inspired by the food out of {', '.join(labels)}"
+        bedrock_payload = {
+            "prompt": prompt,
+            "mode": "text-to-image",
+            "aspect_ratio": "1:1",
+        }
 
-    bedrock_payload = {
-        "prompt": prompt,
-        "mode": "text-to-image",
-        "aspect_ratio": "1:1",
-    }
+        try:
+            bedrock_response = bedrock.invoke_model(
+                modelId="stability.sd3-5-large-v1:0",
+                body=json.dumps(bedrock_payload),
+                contentType="application/json",
+                accept="application/json",
+            )
+            
+            response_body = json.loads(bedrock_response["body"].read())
+            images = response_body.get("images")
 
-    bedrock_response = bedrock.invoke_model(
-        modelId="stability.sd3-5-large-v1:0",
-        body=json.dumps(bedrock_payload),
-        contentType="application/json",
-        accept="application/json",
-    )
+            if not images:
+                return {"error": "No image generated", "details": response_body}
 
-    response_body = json.loads(bedrock_response["body"].read())
-    images = response_body.get("images")
+        except Exception as e:
+            print(f"ERROR: Bedrock API failed: {str(e)}")
+            return {"error": "フクロウの画像生成に失敗しました", "details": str(e)}
 
-    if not images:
-        return {"error": "No image generated", "details": response_body}
 
-    # Base64のままdata URIとしてフロントに返す
-    image_base64 = images[0]
-    image_url = f"data:image/png;base64,{image_base64}"
+        # Base64のままdata URIとしてフロントに返す
+        image_base64 = images[0]
+        image_url = f"data:image/png;base64,{image_base64}"
 
-    return {
-        "image_url": image_url,
-        "labels": labels,
-        "message": random.choice(MESSAGES),
-    }
+        return {
+            "image_url": image_url,
+            "labels": labels,
+            "message": random.choice(MESSAGES),
+        }
+    except Exception as e:
+        print(f"ERROR: Unexpected error in analyze_image: {str(e)}")
+        return {"error": "サーバー内部で予期せぬエラーが発生しました", "details": str(e)}
