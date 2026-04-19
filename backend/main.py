@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import base64
 import boto3
@@ -45,7 +45,7 @@ async def analyze_image(file: UploadFile = File(...)):
                 labels = ["Unknown Food"] # Rekognitionで何も検出されなかった場合のフォールバック
         except Exception as e:
             print(f"ERROR: Rekognition API failed: {str(e)}")
-            return {"error": "画像認識に失敗しました", "details": str(e)}
+            raise HTTPException(status_code=500, detail=f"画像認識に失敗しました: {str(e)}")
 
         # Bedrockで画像生成
         prompt = f"a cute anime-style illustration of owl inspired by the food out of {', '.join(labels)}"
@@ -68,11 +68,13 @@ async def analyze_image(file: UploadFile = File(...)):
             images = response_body.get("images")
 
             if not images:
-                return {"error": "No image generated", "details": response_body}
+                raise HTTPException(status_code=500, detail="No image generated")
 
         except Exception as e:
+            if isinstance(e, HTTPException):
+                raise e
             print(f"ERROR: Bedrock API failed: {str(e)}")
-            return {"error": "フクロウの画像生成に失敗しました", "details": str(e)}
+            raise HTTPException(status_code=500, detail=f"フクロウの画像生成に失敗しました: {str(e)}")
 
 
         # Base64のままdata URIとしてフロントに返す
@@ -84,6 +86,8 @@ async def analyze_image(file: UploadFile = File(...)):
             "labels": labels,
             "message": random.choice(MESSAGES),
         }
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print(f"ERROR: Unexpected error in analyze_image: {str(e)}")
-        return {"error": "サーバー内部で予期せぬエラーが発生しました", "details": str(e)}
+        raise HTTPException(status_code=500, detail=f"サーバー内部で予期せぬエラーが発生しました: {str(e)}")

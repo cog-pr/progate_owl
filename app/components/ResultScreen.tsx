@@ -44,7 +44,7 @@ export default function ResultScreen({
       </div>
 
       {/* Labels */}
-      {labels.length > 0 && (
+      {labels && labels.length > 0 && (
         <div className="flex flex-wrap justify-center gap-2 mb-6 animate-fade-in-up delay-500">
           {labels.map((label, i) => (
             <span
