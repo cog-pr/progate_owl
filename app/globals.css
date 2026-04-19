@@ -874,3 +874,64 @@ body {
 .login-link:hover {
   color: var(--accent-gold-hover);
 }
+
+/* ===== Login Tabs ===== */
+.login-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-lg);
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.login-tab {
+  flex: 1;
+  padding: 0.55rem 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: calc(var(--radius-lg) - 0.2rem);
+  transition: all 0.25s ease;
+  letter-spacing: 0.02em;
+}
+
+.login-tab:hover:not(.login-tab-active) {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.login-tab-active {
+  background: rgba(240, 192, 64, 0.12);
+  color: var(--accent-gold);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== Login Required (full-screen) Background ===== */
+.login-required-bg {
+  background: var(--gradient-night);
+}
+
+/* ===== Password Warning ===== */
+.login-password-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-lg);
+  font-size: 0.75rem;
+  color: rgba(245, 200, 80, 0.9);
+  line-height: 1.5;
+}
+
+.login-warning-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
